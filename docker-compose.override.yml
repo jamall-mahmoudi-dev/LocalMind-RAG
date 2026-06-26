@@ -1,0 +1,47 @@
+version: "3.9"
+
+
+services:
+  backend:
+    build:
+      target: deps
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+      DEBUG: "True"
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+
+  celery-worker:
+    build:
+      target: deps
+    volumes:
+      - ./backend:/app
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    command: ["npm", "run", "dev", "--", "--host"]
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+
+  qdrant:
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+
+  ollama:
+    ports:
+      - "11434:11434"
+
+  postgres:
+    ports:
+      - "5432:5432"

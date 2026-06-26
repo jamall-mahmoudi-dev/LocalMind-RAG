@@ -1,0 +1,181 @@
+version: "3.9"
+
+# RAG Stack: Django (API) + React (UI) + Qdrant (Vector DB) + Ollama (LLM) + openwebUI
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "5m"
+    max-file: "2"
+
+networks:
+  frontend-net:
+    driver: bridge
+  backend-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  qdrant-data:
+  ollama-data:
+  static-data:
+  media-data:
+
+services:
+
+  # ---------------- POSTGRES ----------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: rag_postgres
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ragdb}
+      POSTGRES_USER: ${POSTGRES_USER:-raguser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ragpass}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - backend-net
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  # ---------------- REDIS ----------------
+  redis:
+    image: redis:7-alpine
+    container_name: rag_redis
+    restart: unless-stopped
+    command: ["redis-server", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    networks:
+      - backend-net
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.3"
+          memory: 128M
+
+  # ---------------- QDRANT ----------------
+  qdrant:
+    image: qdrant/qdrant:v1.9.2
+    container_name: rag_qdrant
+    restart: unless-stopped
+    volumes:
+      - qdrant-data:/qdrant/storage
+    networks:
+      - backend-net
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+  # ---------------- OLLAMA (HEAVY) ----------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: rag_ollama
+    restart: unless-stopped
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - backend-net
+    ports:
+      - "11434:11434"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 2G
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: rag_ollama_pull
+    depends_on:
+      - ollama
+    networks:
+      - backend-net
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["sh", "-c", "ollama pull ${OLLAMA_MODEL:-llama3.1:8b}"]
+    restart: "no"
+
+  # ---------------- BACKEND ----------------
+  backend:
+    build:
+      context: ./backend
+      target: production
+    container_name: rag_backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION}
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
+    depends_on:
+      - postgres
+      - redis
+      - qdrant
+      - ollama
+    networks:
+      - backend-net
+      - frontend-net  
+
+  # ---------------- CELERY ----------------
+  celery-worker:
+    build:
+      context: ./backend
+      target: production
+    container_name: rag_celery_worker
+    restart: unless-stopped
+    env_file: .env
+    command: ["celery", "-A", "config", "worker", "-l", "info", "--concurrency=1"]
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION}
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
+    depends_on:
+      - backend
+    networks:
+      - backend-net
+
+  # ---------------- FRONTEND ----------------
+  frontend:
+    build:
+      context: ./frontend
+    container_name: rag_frontend
+    restart: unless-stopped
+    networks:
+      - frontend-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.3"
+          memory: 128M
+
+  # ---------------- NGINX ----------------
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: rag_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    networks:
+      - frontend-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.3"
+          memory: 128M
