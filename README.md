@@ -77,6 +77,8 @@ cp .env.example .env
 # configure environment variables (secrets, database credentials, etc.)
 
 docker compose up -d --build
+<img width="1365" height="282" alt="image" src="https://github.com/user-attachments/assets/14c0803b-8e90-466c-a24c-ea09d8547ec2" />
+
 
 # run migrations
 docker compose exec backend python manage.py migrate
