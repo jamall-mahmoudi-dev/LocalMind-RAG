@@ -77,7 +77,21 @@ cp .env.example .env
 # configure environment variables (secrets, database credentials, etc.)
 
 docker compose up -d --build
-<img width="1365" height="282" alt="image" src="https://github.com/user-attachments/assets/14c0803b-8e90-466c-a24c-ea09d8547ec2" />
+bahram@bahram:~/rag-stack/proj$ docker compose up -d
+WARN[0000] /home/bahram/rag-stack/proj/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion
+WARN[0000] /home/bahram/rag-stack/proj/docker-compose.override.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion
+[+] up 11/11
+ ✔ Network proj_backend-net    Created                                                                                                                              0.2s
+ ✔ Network proj_frontend-net   Created                                                                                                                              0.2s
+ ✔ Container rag_frontend      Started                                                                                                                             14.4s
+ ✔ Container rag_postgres      Started                                                                                                                             13.3s
+ ✔ Container rag_qdrant        Started                                                                                                                             12.5s
+ ✔ Container rag_nginx         Started                                                                                                                             13.6s
+ ✔ Container rag_ollama        Started                                                                                                                             12.9s
+ ✔ Container rag_redis         Started                                                                                                                             13.9s
+ ✔ Container rag_ollama_pull   Started                                                                                                                             18.1s
+ ✔ Container rag_backend       Started                                                                                                                             18.7s
+ ✔ Container rag_celery_worker Started  
 
 
 # run migrations
