@@ -77,7 +77,8 @@ cp .env.example .env
 # configure environment variables (secrets, database credentials, etc.)
 
 docker compose up -d --build
-bahram@bahram:~/rag-stack/proj$ docker compose up -d
+```bash
+bahram@bahram:~/rag-stack/proj$ docker compose up -d --build
 WARN[0000] /home/bahram/rag-stack/proj/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion
 WARN[0000] /home/bahram/rag-stack/proj/docker-compose.override.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion
 [+] up 11/11
@@ -92,7 +93,7 @@ WARN[0000] /home/bahram/rag-stack/proj/docker-compose.override.yml: the attribut
  ✔ Container rag_ollama_pull   Started                                                                                                                             18.1s
  ✔ Container rag_backend       Started                                                                                                                             18.7s
  ✔ Container rag_celery_worker Started  
-
+```
 
 # run migrations
 docker compose exec backend python manage.py migrate
